@@ -1,0 +1,43 @@
+---
+- name: create user
+  hosts: testbox
+  vars:
+    - ansible_ssh_user: root
+  tasks:
+    - name: ensure user not present
+      user: name=wes state=absent remove=yes
+
+    - name: inspect removal
+      shell: >
+        ls /home | grep wes;
+        cat /etc/passwd | grep wes;
+        cat /etc/group | grep wes;
+        cat /etc/shadow | grep wes;
+        ls /var/spool/mail | grep wes;
+      register: result
+      failed_when: result.rc != 1
+
+    - name: create user
+      user: name=wes state=present password=wes
+
+    - name: copy the .bash_profile file
+      command:  cp /root/.bash_profile /home/wes/
+
+    - name: create .ssh dir
+      file: path=/home/wes/.ssh mode=0700 owner=wes group=wes state=directory
+
+    - name: copy the authorized_keys file
+      command:  cp /root/.ssh/authorized_keys /home/wes/.ssh/
+
+    - name: set file permissions on authorized_hosts
+      file: path=/home/wes/.ssh/authorized_keys mode=0600 owner=wes group=wes
+
+- name: test host connection
+  hosts: all:!localhost
+  tasks:
+    - name: test ssh
+      command: hostname
+
+    - name: check distro
+      command: cat /etc/redhat-release
+
